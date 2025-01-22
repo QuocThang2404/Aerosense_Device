@@ -114,8 +114,8 @@ def main():
                    keyfile=private_key_path,
                    tls_version=ssl.PROTOCOL_TLSv1_2)
 
-    # Attempt to connect to the MQTT broker
-    print(f"Connecting to broker {MQTT_BROKER}:{MQTT_PORT}")
+    # Attempt to connect to AWS
+    print(f"Connecting to AWS")
     client.connect(AWS_IOT_ENDPOINT, MQTT_PORT, 60)
 
     # Start the client loop (non-blocking)
