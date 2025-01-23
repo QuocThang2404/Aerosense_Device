@@ -4,7 +4,7 @@ import json
 import paho.mqtt.client as mqtt
 import ssl
 
-HOST = '192.168.1.101'
+HOST = '192.168.100.211'
 PORT = 8899
 
 AWS_IOT_ENDPOINT = "a1xu2macchahf7-ats.iot.ap-southeast-2.amazonaws.com" # Replace with your endpoint
@@ -115,7 +115,6 @@ def main():
                    tls_version=ssl.PROTOCOL_TLSv1_2)
 
     # Attempt to connect to the MQTT broker
-    print(f"Connecting to broker {MQTT_BROKER}:{MQTT_PORT}")
     client.connect(AWS_IOT_ENDPOINT, MQTT_PORT, 60)
 
     # Start the client loop (non-blocking)
