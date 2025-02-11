@@ -2,15 +2,19 @@ import asyncio
 import struct
 import numpy as np
 import json
+import ssl
 import paho.mqtt.client as mqtt
 
 HOST = '10.0.96.80'
 PORT = 8899
 
-# MQTT broker information
-MQTT_BROKER = "broker.emqx.io"
-MQTT_PORT = 1883
-MQTT_TOPIC_PUBLISH = "IOT/dataTopic/AEROSENSE"
+AWS_IOT_ENDPOINT = "a1xu2macchahf7-ats.iot.ap-southeast-2.amazonaws.com" # Replace with your endpoint
+MQTT_PORT = 8883  # Port MQTT SSL
+MQTT_TOPIC_PUBLISH = "IOT/dataTopic/AEROSENSE" # Replace with the topic you want to use
+
+root_ca_path = "aws/root-CA.crt"  # Path to root certificate
+private_key_path = "aws/private.pem.key"  # Path to private key
+cert_path = "aws/certificate.pem.crt"  # Path to tới certificate
 
 # Global counter (uint32)
 count = np.uint32(0)
@@ -40,6 +44,7 @@ def parse_28_byte_content(data_28):
         "Valid Bit ID": fields[6],
     }
 
+
 def parse_36_byte_content(data_36):
     """
     data_36: 36 bytes => 6 floats (24 bytes) + 1 uint (4 bytes) + 2 floats (8 bytes) = 9 fields.
@@ -57,6 +62,7 @@ def parse_36_byte_content(data_36):
         "Body Move Energy": fields[7],
         "Body Move Range": fields[8],
     }
+
 
 def parse_packet(data):
     """
@@ -82,8 +88,9 @@ def parse_packet(data):
     proto, ver, ptype, cmd, request_id, timeout, content_len = struct.unpack('!BBBBIHI', data[:14])
     function = struct.unpack('!H', data[14:16])[0]
 
-    content_data = data[16 : 14 + content_len]
+    content_data = data[16: 14 + content_len]
     return request_id, function, content_len, content_data
+
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     global count
@@ -235,18 +242,25 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         # Decrease 'count' if close connection
         count = count - 1
 
+
 async def main():
     global mqtt_client
 
     # ---------------- MQTT Setup ----------------
     mqtt_client = mqtt.Client(client_id="AEROSENSEClient")
 
-    # Connect to broker
-    mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    # Configure SSL for secure connections to AWS IoT
+    mqtt_client.tls_set(ca_certs=root_ca_path,
+                   certfile=cert_path,
+                   keyfile=private_key_path,
+                   tls_version=ssl.PROTOCOL_TLSv1_2)
+
+    # Attempt to connect to AWS
+    print(f"Connecting to AWS")
+    mqtt_client.connect(AWS_IOT_ENDPOINT, MQTT_PORT, 60)
 
     # Start a background thread to handle the network loop
     mqtt_client.loop_start()
-    print(f"[MQTT] Connected to {MQTT_BROKER}:{MQTT_PORT}, client is running in background.")
 
     # ---------------- TCP Server Setup (asyncio) ----------------
     server = await asyncio.start_server(
@@ -261,6 +275,7 @@ async def main():
     async with server:
         # Serve requests until the program is stopped
         await server.serve_forever()
+
 
 if __name__ == '__main__':
     asyncio.run(main())
